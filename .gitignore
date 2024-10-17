@@ -1,0 +1,10 @@
+*terraform*
+passwd
+.cache/
+.local/
+.titan-bash/
+.kitchen/
+Gemfile.lock
+.script/
+.config/
+version.txt

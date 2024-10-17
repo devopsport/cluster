@@ -1,0 +1,92 @@
+name: Pipeline
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  Pipeline:
+    name: Default
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Generate PROJECTKEY
+      run: echo "REPOSITORY_NAME=$(echo "${GITHUB_REPOSITORY}" | cut -d "/" -f2)" >> $GITHUB_ENV
+
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      with:
+        args: >
+          -Dsonar.organization=team-devopsport
+          -Dsonar.projectKey=${{ env.REPOSITORY_NAME }}
+          -Dsonar.qualitygate.wait=true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+    - name: Run Snyk to check Kubernetes manifest file for issues
+      run: |
+        curl https://static.snyk.io/cli/latest/snyk-linux -o /usr/local/bin/snyk
+        chmod +x /usr/local/bin/snyk
+        snyk auth "${{ secrets.SNYK_TOKEN }}"
+        snyk iac test --report --org="${{ secrets.SNYK_ORG }}" --severity-threshold=low --target-name="$(echo "${GITHUB_REPOSITORY}" | cut -d "/" -f2)"
+
+    - name: Release
+      run: ./.github/workflows/release.sh
+      env:
+        GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+
+    - name: Updating entry in GetPort
+      uses: port-labs/port-github-action@v1
+      with:
+        clientId: ${{ secrets.PORT_CLIENT_ID }}
+        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+        baseUrl: https://api.getport.io
+        operation: UPSERT
+        identifier: ${{ env.REPOSITORY_NAME }}-${{ env.GIT_TAG }}
+        blueprint: module_release
+        properties: |-
+          {
+            "version": ["${{ env.GIT_TAG }}"],
+            "repository_tag": "https://github.com/devopsport/${{ env.REPOSITORY_NAME }}/tree/${{ env.GIT_TAG }}",
+            "security": "Passed",
+            "quality": "Passed",
+            "link_to_the_ci": "https://github.com/devopsport/${{ env.REPOSITORY_NAME }}/actions/runs/${GITHUB_RUN_ID}/job/${GITHUB_RUN_NUMBER}",
+            "workflow_id": "${GITHUB_RUN_ID}",
+            "repository": "https://github.com/devopsport/${{ env.REPOSITORY_NAME }}",
+            "repository_id": "${{ env.REPOSITORY_NAME }}",
+            "deprecated": false
+          }
+        relations: |
+          {
+            "module_repository": "${{ env.REPOSITORY_NAME }}"
+          }
+
+    - name: Updating entry in GetPort
+      uses: port-labs/port-github-action@v1
+      with:
+        clientId: ${{ secrets.PORT_CLIENT_ID }}
+        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+        baseUrl: https://api.getport.io
+        operation: UPSERT
+        identifier: ${{ env.REPOSITORY_NAME }}
+        blueprint: module_repository
+        properties: |-
+          {
+            "url": "https://github.com/devopsport/${{ env.REPOSITORY_NAME }}",
+            "security": true,
+            "quality": true,
+            "latest_version": ["${{ env.GIT_TAG }}"]
+          }
+        relations: |
+          {
+            "organization": "icarus",
+            "git_hub_team": "admin-team"
+          }
