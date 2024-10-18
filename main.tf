@@ -138,7 +138,14 @@ resource "aws_security_group" "main" {
     from_port        = 0
     to_port          = 0
     protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
+    cidr_blocks      = [data.aws_vpc.main.cidr_block]
+  }
+
+  ingress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["190.0.0.0/8"]
   }
 
   tags = {
