@@ -1,3 +1,3 @@
-output "main" {
-  value = null_resource.main
+output "cluster" {
+  value = aws_ecs_cluster.main.id
 }
