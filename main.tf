@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "main" {
-  bucket              = "${var.project}-${var.env}"
+  bucket_prefix       = "${var.project}-${var.env}"
   force_destroy       = true
   object_lock_enabled = false
 
@@ -8,10 +8,10 @@ resource "aws_s3_bucket" "main" {
   }
 }
 
-resource "aws_s3_bucket_acl" "main" {
-  bucket = aws_s3_bucket.main.id
-  acl    = "private"
-}
+# resource "aws_s3_bucket_acl" "main" {
+#   bucket = aws_s3_bucket.main.id
+#   acl    = "private"
+# }
 
 resource "aws_s3_bucket_public_access_block" "main" {
   bucket = aws_s3_bucket.main.id
@@ -48,7 +48,7 @@ resource "aws_s3_bucket_policy" "main" {
         {
             "Effect": "Allow",
             "Principal": {
-                "AWS": "arn:aws:iam::797873946194:root"
+                "AWS": "arn:aws:iam::127311923021:root"
             },
             "Action": "s3:PutObject",
             "Resource": "arn:aws:s3:::${aws_s3_bucket.main.id}/AWSLogs/${data.aws_caller_identity.main.account_id}/*"
@@ -106,12 +106,8 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 }
 
 resource "aws_acm_certificate" "main" {
-  domain_name       = "front.${var.project}.${var.domain}"
+  domain_name       = "front.${var.project}.${var.env}.${var.domain}"
   validation_method = "DNS"
-
-  tags = {
-    Name = "front.${var.project}.${var.domain}"
-  }
 }
 
 resource "aws_route53_record" "main" {
@@ -210,7 +206,7 @@ resource "aws_lb_listener" "main" {
 
 resource "aws_route53_record" "app" {
   zone_id = data.aws_route53_zone.main.zone_id
-  name    = "front.${var.project}.${var.domain}"
+  name    = "front.${var.project}.${var.env}.${var.domain}"
   type    = "A"
 
   alias {
