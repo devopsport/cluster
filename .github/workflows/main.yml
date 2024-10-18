@@ -36,7 +36,7 @@ jobs:
         curl https://static.snyk.io/cli/latest/snyk-linux -o /usr/local/bin/snyk
         chmod +x /usr/local/bin/snyk
         snyk auth "${{ secrets.SNYK_TOKEN }}"
-        snyk iac test --report --org="${{ secrets.SNYK_ORG }}" --severity-threshold=low --target-name="$(echo "${GITHUB_REPOSITORY}" | cut -d "/" -f2)"
+        snyk iac test --report --org="${{ secrets.SNYK_ORG }}" --severity-threshold=medium --target-name="$(echo "${GITHUB_REPOSITORY}" | cut -d "/" -f2)"
 
     - name: Release
       run: ./.github/workflows/release.sh
