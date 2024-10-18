@@ -1,3 +1,72 @@
+resource "aws_s3_bucket" "main" {
+  bucket              = "${var.project}-${var.env}"
+  force_destroy       = true
+  object_lock_enabled = false
+
+  tags = {
+    Name = "${var.project}-${var.env}"
+  }
+}
+
+resource "aws_s3_bucket_policy" "main" {
+  bucket = aws_s3_bucket.main.id
+
+  policy = <<POLICY
+{
+    "Id": "ExamplePolicy",
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowSSLRequestsOnly",
+            "Action": "s3:*",
+            "Effect": "Deny",
+            "Resource": [
+                "arn:aws:s3:::${aws_s3_bucket.main.id}",
+                "arn:aws:s3:::${aws_s3_bucket.main.id}/*"
+            ],
+            "Condition": {
+                "Bool": {
+                     "aws:SecureTransport": "false"
+                }
+            },
+            "Principal": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::797873946194:root"
+            },
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::${aws_s3_bucket.main.id}/AWSLogs/${data.aws_caller_identity.main.account_id}/*"
+        },
+        {
+            "Sid": "AWSLogDeliveryWrite",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "delivery.logs.amazonaws.com"
+            },
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::${aws_s3_bucket.main.id}/AWSLogs/${data.aws_caller_identity.main.account_id}/*",
+            "Condition": {
+              "StringEquals": {
+                "s3:x-amz-acl": "bucket-owner-full-control"
+              }
+            }
+        },
+        {
+          "Sid": "AWSLogDeliveryAclCheck",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "delivery.logs.amazonaws.com"
+          },
+          "Action": "s3:GetBucketAcl",
+          "Resource": "arn:aws:s3:::${aws_s3_bucket.main.id}"
+        }
+    ]
+}
+POLICY
+}
+
 resource "aws_ecs_cluster" "main" {
   name = "${var.project}-${var.env}"
 
@@ -70,6 +139,11 @@ resource "aws_lb" "main" {
   security_groups            = [aws_security_group.main.id]
   subnets                    = data.aws_subnets.main.ids
   enable_deletion_protection = false
+
+  access_logs {
+    bucket  = aws_s3_bucket.main.id
+    enabled = true
+  }
 
   tags = {
     Name = "${var.project}-${var.env}"
