@@ -25,7 +25,7 @@ jobs:
       with:
         args: >
           -Dsonar.organization=team-devopsport
-          -Dsonar.projectKey=${{ env.REPOSITORY_NAME }}
+          -Dsonar.projectKey=devopsport_${{ env.REPOSITORY_NAME }}
           -Dsonar.qualitygate.wait=true
       env:
         GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
